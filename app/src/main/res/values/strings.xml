@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">MP7</string>
+    <string name="search_placeholder">Search files or folders</string>
+</resources>
