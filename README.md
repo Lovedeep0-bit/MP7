@@ -1,6 +1,6 @@
-# MP7 - Audio and Video player
+# MP3 - Enhanced Cross-Platform Video Player
 
-A modern, VLC-inspired video and audio player built with Jetpack Compose, featuring advanced thumbnail rendering, progress tracking, and comprehensive media controls.
+A modern, VLC-inspired video player built with Jetpack Compose, featuring advanced thumbnail rendering, progress tracking, and comprehensive media controls.
 
 ## 🚀 **Key Features**
 
