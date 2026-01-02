@@ -1,8 +1,8 @@
-# MP7 - Modern Media Player (v2.1) 🚀
+# MP7 - Modern Media Player🚀
 
 A high-performance, minimalist MP3 and MP4 player for Android, built with Jetpack Compose and Media3 ExoPlayer.
 
-## ✨ Key Features (v2.1)
+## ✨ Key Features
 - **Extreme Speed**: Single-pass media scanning (66% faster initial load).
 - **Smooth UI**: 60fps scrolling with stable keys and fast-out-slow-in animations.
 - **Unified Media**: Seamlessly browse and play both high-quality audio and video.
