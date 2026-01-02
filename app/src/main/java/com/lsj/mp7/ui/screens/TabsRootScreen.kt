@@ -529,17 +529,7 @@ private fun PlaylistsHeader(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    IconButton(
-                        onClick = onNavigateToVideo,
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.ChevronLeft,
-                            contentDescription = "Go to MP4",
-                            tint = colorScheme.onSurface,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                    Spacer(Modifier.size(24.dp)) // Maintain balance with right icon
                     Text(
                         text = "MP3",
                         color = colorScheme.onSurface,
@@ -928,7 +918,7 @@ private fun AlbumCard(
                     Icon(
                         Icons.Default.MusicNote,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = colorScheme.onSurface,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
@@ -1311,6 +1301,9 @@ fun SettingsScreen(
                     DefaultTabSettingItem()
                 }
                 item {
+                    ImmersiveModeSettingItem()
+                }
+                item {
                     ScannedDirectoriesSettingItem()
                 }
                 item {
@@ -1324,7 +1317,7 @@ fun SettingsScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Version 2.1",
+                            text = "Version 2.2",
                             color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             fontSize = 12.sp
                         )
@@ -1683,6 +1676,48 @@ fun GithubRepoSettingItem() {
             modifier = Modifier
                 .padding(end = 8.dp)
                 .size(20.dp)
+        )
+    }
+}
+@Composable
+fun ImmersiveModeSettingItem() {
+    val context = LocalContext.current
+    val isImmersive = ImmersiveModeState.isImmersiveMode
+    val colorScheme = MaterialTheme.colorScheme
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(colorScheme.surfaceVariant)
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = "Immersive Mode",
+                color = colorScheme.onSurface,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Hide system bars",
+                color = colorScheme.onSurfaceVariant,
+                fontSize = 14.sp
+            )
+        }
+        Switch(
+            checked = isImmersive,
+            onCheckedChange = { ImmersiveModeState.setImmersiveMode(context, it) },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.Black,
+                checkedTrackColor = Color.White,
+                uncheckedThumbColor = Color.Gray,
+                uncheckedTrackColor = colorScheme.surfaceVariant,
+                checkedBorderColor = Color.White,
+                uncheckedBorderColor = Color.Gray
+            )
         )
     }
 }

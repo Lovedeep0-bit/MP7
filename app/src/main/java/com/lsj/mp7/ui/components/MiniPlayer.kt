@@ -19,6 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -48,7 +50,9 @@ private data class MiniPlayerUiState(
 @Composable
 fun MiniPlayer(
     onOpenNowPlaying: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp),
+    enableFullBorder: Boolean = true
 ) {
     val controller = PlayerConnection.controller.collectAsState(initial = null).value
 
@@ -58,7 +62,6 @@ fun MiniPlayer(
     val onOpenNowPlayingStable by rememberUpdatedState(onOpenNowPlaying)
 
     // Stable shapes to avoid reallocations
-    val containerShape = remember { RoundedCornerShape(16.dp) }
     val pillShape = remember { RoundedCornerShape(22.dp) }
 
     // Bridge MediaController callbacks into Compose state
@@ -122,12 +125,27 @@ fun MiniPlayer(
             .fillMaxWidth()
             .background(
                 color = colorScheme.surfaceVariant,
-                shape = containerShape
+                shape = shape
             )
-            .border(
-                width = 1.dp,
-                color = colorScheme.outline.copy(alpha = 0.3f),
-                shape = containerShape
+            .then(
+                if (enableFullBorder) {
+                    Modifier.border(
+                        width = 1.dp,
+                        color = colorScheme.outline.copy(alpha = 0.3f),
+                        shape = shape
+                    )
+                } else {
+                    Modifier.drawBehind {
+                        val strokeWidth = 1.dp.toPx()
+                        val borderColor = colorScheme.outline.copy(alpha = 0.3f)
+                        drawLine(
+                            color = borderColor,
+                            start = Offset(0f, 0f),
+                            end = Offset(size.width, 0f),
+                            strokeWidth = strokeWidth
+                        )
+                    }
+                }
             )
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
@@ -199,7 +217,7 @@ fun MiniPlayer(
                     Icon(
                         Icons.Default.SkipPrevious,
                         contentDescription = "Previous",
-                        tint = if (uiState.hasPrev) Color.White else Color(0xFF777777),
+                        tint = if (uiState.hasPrev) colorScheme.onSurface else colorScheme.onSurface.copy(alpha = 0.38f),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -235,7 +253,7 @@ fun MiniPlayer(
                     Icon(
                         Icons.Default.SkipNext,
                         contentDescription = "Next",
-                        tint = if (uiState.hasNext) Color.White else Color(0xFF777777),
+                        tint = if (uiState.hasNext) colorScheme.onSurface else colorScheme.onSurface.copy(alpha = 0.38f),
                         modifier = Modifier.size(18.dp)
                     )
                 }

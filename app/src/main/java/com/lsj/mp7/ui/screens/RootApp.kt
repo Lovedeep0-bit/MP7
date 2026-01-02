@@ -38,7 +38,10 @@ import androidx.lifecycle.Observer
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.animation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -86,9 +89,10 @@ import com.lsj.mp7.util.DurationFormatter
 import androidx.compose.material.icons.filled.CheckCircle
 
 
-@OptIn(ExperimentalAnimationApi::class)
+@OptIn(ExperimentalAnimationApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun RootApp(startExpanded: Boolean = false) {
+
     val homeViewModel: HomeViewModel = viewModel()
     val uiState by homeViewModel.uiState.collectAsState()
     val navController = rememberNavController()
@@ -105,8 +109,11 @@ fun RootApp(startExpanded: Boolean = false) {
     val isSettingsOpen = SettingsState.isSettingsOpen
     
     val colorScheme = MaterialTheme.colorScheme
+    val isImmersive = com.lsj.mp7.ui.screens.ImmersiveModeState.isImmersiveMode
+
     Scaffold(
-        containerColor = colorScheme.background
+        containerColor = colorScheme.background,
+        contentWindowInsets = if (isImmersive) WindowInsets.displayCutout else WindowInsets.systemBars
     ) { paddingValues ->
         Box(Modifier.fillMaxSize().padding(paddingValues)) {
             var isPlayerExpanded by rememberSaveable { mutableStateOf(startExpanded) }
@@ -124,32 +131,65 @@ fun RootApp(startExpanded: Boolean = false) {
                 isPlayerExpanded = false
             }
 
+            val scope = rememberCoroutineScope()
+            val initialPage = if (defaultTab == DefaultTab.MP3) 0 else 1
+            val pagerState = rememberPagerState(initialPage = initialPage) { 2 }
+            
+            // Sync current page with back stack for correct handling if needed, 
+            // though Pager handles main switching now.
+
             NavHost(
                 navController = navController,
-                startDestination = if (defaultTab == DefaultTab.MP3) "audio_main" else "video_main",
+                startDestination = "home", // Unified home with Pager
                 enterTransition = { EnterTransition.None },
                 exitTransition = { ExitTransition.None },
                 popEnterTransition = { EnterTransition.None },
                 popExitTransition = { ExitTransition.None },
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Audio Section
-                composable("audio_main") {
-                    TabsRootScreen(
-                        homeViewModel = homeViewModel,
-                        onOpenAudio = { /* no-op navigate; playback handled without opening player */ },
-                        onOpenAudioFolder = { folderName ->
-                            val name = java.net.URLEncoder.encode(folderName, "UTF-8")
-                            navController.navigate("audio_list/$name")
-                        },
-                        onOpenNowPlaying = {
-                            isPlayerExpanded = true
-                        },
-                        onNavigateToVideo = {
-                            navController.navigate("video_main") { popUpTo("video_main") }
+                // Unified Home Screen with Swipe
+                composable("home") {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        beyondBoundsPageCount = 1 // Keep both tabs in memory for smooth swipe
+                    ) { page ->
+                        when (page) {
+                            0 -> TabsRootScreen(
+                                homeViewModel = homeViewModel,
+                                onOpenAudio = { /* no-op navigate; playback handled without opening player */ },
+                                onOpenAudioFolder = { folderName ->
+                                    val name = java.net.URLEncoder.encode(folderName, "UTF-8")
+                                    navController.navigate("audio_list/$name")
+                                },
+                                onOpenNowPlaying = {
+                                    isPlayerExpanded = true
+                                },
+                                onNavigateToVideo = {
+                                    // Use pager scroll instead of navigation
+                                    scope.launch { 
+                                        pagerState.animateScrollToPage(1) 
+                                    }
+                                }
+                            )
+                            1 -> VideoMainScreen(
+                                onOpenVideoFolder = { folderName ->
+                                    val name = java.net.URLEncoder.encode(folderName, "UTF-8")
+                                    navController.navigate("video_list/$name")
+                                },
+                                navController = navController,
+                                onNavigateToAudio = {
+                                    // Use pager scroll instead of navigation
+                                    scope.launch { 
+                                        pagerState.animateScrollToPage(0) 
+                                    }
+                                }
+                            )
                         }
-                    )
+                    }
                 }
+
+                // Audio Details
                 composable("audio_list/{folder}") { backStackEntry ->
                     val arg = backStackEntry.arguments?.getString("folder") ?: return@composable
                     val folder = java.net.URLDecoder.decode(arg, "UTF-8")
@@ -192,19 +232,8 @@ fun RootApp(startExpanded: Boolean = false) {
                     )
                 }
                 
-                // Video Section
-                composable("video_main") {
-                    VideoMainScreen(
-                        onOpenVideoFolder = { folderName ->
-                            val name = java.net.URLEncoder.encode(folderName, "UTF-8")
-                            navController.navigate("video_list/$name")
-                        },
-                        navController = navController,
-                        onNavigateToAudio = {
-                            navController.navigate("audio_main") { popUpTo("audio_main") }
-                        }
-                    )
-                }
+                // Video Section - Main screen handled by Pager (page 1)
+
                 composable("video_list/{folder}") { backStackEntry ->
                     val arg = backStackEntry.arguments?.getString("folder") ?: return@composable
                     val folder = java.net.URLDecoder.decode(arg, "UTF-8")
@@ -250,18 +279,15 @@ fun RootApp(startExpanded: Boolean = false) {
                     
                     // Refresh if folders are empty when screen appears
                     LaunchedEffect(folder) {
-                        android.util.Log.d("VideoFolderDetail", "=== Screen appeared for folder: '$folder' ===")
-                        val currentFolders = videoRepository.folders.value ?: emptyList()
-                        android.util.Log.d("VideoFolderDetail", "Current folders count: ${currentFolders.size}")
                         
                         // Always refresh on screen appear to ensure we have latest data
                         if (hasMediaPermissions(context)) {
-                            android.util.Log.d("VideoFolderDetail", "Refreshing video library...")
+                            // Refreshing video library...
                             scope.launch {
                                 videoRepository.refreshVideoLibrary()
                             }
                         } else {
-                            android.util.Log.w("VideoFolderDetail", "No permissions, cannot refresh")
+                            // No permissions, cannot refresh
                         }
                     }
                     
@@ -304,12 +330,8 @@ fun RootApp(startExpanded: Boolean = false) {
                     // This prevents the "No videos found" message from flashing during initial load
                     val shouldShowLoading = isLoading || (videos.isEmpty() && !hasCompletedInitialLoad)
                     
-                    android.util.Log.d("VideoFolderDetail", "Folder item found: ${folderItem != null}, Videos count: ${videos.size}")
                     if (folderItem != null) {
-                        android.util.Log.d("VideoFolderDetail", "Found folder: '${folderItem.name}', Video titles: ${videos.take(3).map { it.title }.joinToString()}")
                     } else {
-                        android.util.Log.w("VideoFolderDetail", "Folder '$folder' NOT FOUND in ${allFolders.size} folders")
-                        android.util.Log.w("VideoFolderDetail", "Available folders: ${allFolders.map { "'${it.name}' (${it.videoCount} videos)" }.joinToString()}")
                     }
                     
                     VideoFolderDetailGrid(
@@ -335,16 +357,33 @@ fun RootApp(startExpanded: Boolean = false) {
                 }
             }
             
-            // Show mini player only for audio and not when in player screens or settings
-            if (currentRoute?.startsWith("audio") == true && 
+            // Show mini player for "home" (if on MP3 page) or "audio" routes
+            // Only show on home if we are on the first page (MP3)
+            val isMp3Page = if (currentRoute == "home") pagerState.currentPage == 0 else true
+            val isMiniPlayerVisible = (currentRoute == "home" || currentRoute?.startsWith("audio") == true) && 
+                isMp3Page &&
                 currentRoute?.startsWith("audio_player") != true &&
-                !isSettingsOpen) {
+                !isSettingsOpen
+
+            AnimatedVisibility(
+                visible = isMiniPlayerVisible,
+                enter = slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                ) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) {
                 com.lsj.mp7.ui.components.MiniPlayer(
                     onOpenNowPlaying = { isPlayerExpanded = true },
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 8.dp) // Small gap above the separator line of bottom nav bar
-                        .padding(horizontal = 12.dp)
+                        .padding(horizontal = if (isImmersive) 0.dp else 12.dp)
+                        .padding(bottom = 0.dp),
+                    shape = if (isImmersive) androidx.compose.ui.graphics.RectangleShape else androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    enableFullBorder = !isImmersive
                 )
             }
 
@@ -443,7 +482,6 @@ fun VideoMainScreen(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         // Refresh folders with updated progress immediately when video player returns
-        android.util.Log.d("VideoMainScreen", "Video player returned, refreshing progress...")
         scope.launch {
             videoRepository.refreshFoldersWithProgress()
         }
@@ -453,20 +491,14 @@ fun VideoMainScreen(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
         val granted = results.values.all { it }
-        android.util.Log.d("VideoMainScreen", "Permission result: $granted")
-        results.forEach { (permission, isGranted) ->
-            android.util.Log.d("VideoMainScreen", "  - $permission: $isGranted")
-        }
         
         if (granted) {
             // Permissions granted, refresh video library
-            android.util.Log.d("VideoMainScreen", "All permissions granted, starting scan")
             scope.launch {
                 videoRepository.refreshVideoLibrary()
             }
         } else {
             // Show snackbar with action to open settings
-            android.util.Log.d("VideoMainScreen", "Permissions denied")
             val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                 data = android.net.Uri.fromParts("package", context.packageName, null)
             }
@@ -485,11 +517,9 @@ fun VideoMainScreen(
     // Observe LiveData - ensure it triggers UI updates
     DisposableEffect(videoRepository) {
         val foldersObserver = Observer<List<com.lsj.mp7.data.FolderItem>> { folderList ->
-            android.util.Log.d("VideoMainScreen", "Folders LiveData updated: ${folderList.size} folders")
             folders = folderList
         }
         val loadingObserver = Observer<Boolean> { loading ->
-            android.util.Log.d("VideoMainScreen", "Loading LiveData updated: $loading")
             val wasLoading = isLoading
             isLoading = loading
             // Track when loading completes (transitions from true to false)
@@ -515,9 +545,6 @@ fun VideoMainScreen(
     // Check permissions and refresh video library on first load
     LaunchedEffect(Unit) {
         val hasPermissions = hasMediaPermissions(context)
-        android.util.Log.d("VideoMainScreen", "=== Initial Load ===")
-        android.util.Log.d("VideoMainScreen", "Has permissions: $hasPermissions")
-        android.util.Log.d("VideoMainScreen", "Required permissions: ${requiredPermissions.joinToString()}")
         
         // Check each permission individually
         if (Build.VERSION.SDK_INT >= 33) {
@@ -529,22 +556,18 @@ fun VideoMainScreen(
                 context, 
                 android.Manifest.permission.READ_MEDIA_VIDEO
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            android.util.Log.d("VideoMainScreen", "READ_MEDIA_AUDIO: $hasAudio, READ_MEDIA_VIDEO: $hasVideo")
         } else {
             val hasStorage = androidx.core.content.ContextCompat.checkSelfPermission(
                 context, 
                 android.Manifest.permission.READ_EXTERNAL_STORAGE
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            android.util.Log.d("VideoMainScreen", "READ_EXTERNAL_STORAGE: $hasStorage")
         }
         
         if (hasPermissions) {
-            android.util.Log.d("VideoMainScreen", "Permissions granted, starting scan immediately")
             scope.launch {
                 videoRepository.refreshVideoLibrary()
             }
         } else {
-            android.util.Log.d("VideoMainScreen", "Permissions NOT granted, requesting...")
             permissionLauncher.launch(requiredPermissions.toTypedArray())
         }
     }
@@ -552,9 +575,7 @@ fun VideoMainScreen(
     // Also check when permissions might have changed (e.g., user granted from settings)
     LaunchedEffect(hasMediaPermissions(context)) {
         val hasPerms = hasMediaPermissions(context)
-        android.util.Log.d("VideoMainScreen", "Permission state changed: $hasPerms, folders: ${folders.size}, loading: $isLoading")
         if (hasPerms && folders.isEmpty() && !isLoading) {
-            android.util.Log.d("VideoMainScreen", "Permissions granted (retry), starting scan")
             scope.launch {
                 videoRepository.refreshVideoLibrary()
             }
@@ -632,8 +653,6 @@ fun VideoMainScreen(
             onFolderClick = { folder ->
                 // Always navigate to folder view - pass folder name and ensure videos are loaded
                 val name = java.net.URLEncoder.encode(folder.name, "UTF-8")
-                android.util.Log.d("VideoMainScreen", "Navigating to folder: '$name' with ${folder.videos.size} videos")
-                android.util.Log.d("VideoMainScreen", "Folder videos: ${folder.videos.map { it.title }.joinToString()}")
                 navController.navigate("video_list/$name")
             },
             onVideoClick = { video ->
@@ -826,17 +845,7 @@ private fun VideosHeader(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 2.dp)
                     )
-                    IconButton(
-                        onClick = onNavigateToAudio,
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.ChevronRight,
-                            contentDescription = "Go to MP3",
-                            tint = colorScheme.onSurface,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                    Spacer(Modifier.size(24.dp)) // Maintain balance with left icon
                 }
             }
             

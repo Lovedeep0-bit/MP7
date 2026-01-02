@@ -31,12 +31,68 @@ class MainActivity : ComponentActivity() {
         // Initialize theme state
         com.lsj.mp7.ui.screens.ThemeState.initialize(this)
         
-        // Enable edge-to-edge display
-        enableEdgeToEdge()
+        // Initialize immersive mode state
+        com.lsj.mp7.ui.screens.ImmersiveModeState.initialize(this)
+        
+        // Enable edge-to-edge display with transparent status bar
+        enableEdgeToEdge(
+            statusBarStyle = androidx.activity.SystemBarStyle.dark(
+                android.graphics.Color.TRANSPARENT
+            ),
+            navigationBarStyle = androidx.activity.SystemBarStyle.dark(
+                android.graphics.Color.TRANSPARENT
+            )
+        )
+
+        // Robust immersive mode: Allow window to extend into cutout area
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode = 
+                android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
         
         setContent {
-            // Observe current theme from ThemeState so UI recomposes when it changes
+            // Observe current theme and immersive mode
             val currentTheme = com.lsj.mp7.ui.screens.ThemeState.currentTheme
+            val isImmersive = com.lsj.mp7.ui.screens.ImmersiveModeState.isImmersiveMode
+            
+            // Dynamic system bars based on theme
+            androidx.compose.runtime.LaunchedEffect(currentTheme) {
+                val isDark = currentTheme == com.lsj.mp7.ui.screens.AppTheme.Dark || 
+                             currentTheme == com.lsj.mp7.ui.screens.AppTheme.OLED
+                
+                enableEdgeToEdge(
+                    statusBarStyle = if (isDark) {
+                        androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        androidx.activity.SystemBarStyle.light(
+                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.TRANSPARENT
+                        )
+                    },
+                    navigationBarStyle = if (isDark) {
+                        androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        androidx.activity.SystemBarStyle.light(
+                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.TRANSPARENT
+                        )
+                    }
+                )
+            }
+            
+            // Apply immersive mode logic
+            androidx.compose.runtime.LaunchedEffect(isImmersive) {
+                val windowInsetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                // Use BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE for immersive mode so bars float over content
+                // when swiped, preserving the immersive feel.
+                windowInsetsController.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                if (isImmersive) {
+                    windowInsetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                } else {
+                    windowInsetsController.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                }
+            }
+
             com.lsj.mp7.ui.theme.Mp7Theme(appTheme = currentTheme) {
                 // Check if we should start with player expanded
                 val shouldStartExpanded = intent?.action == android.content.Intent.ACTION_VIEW && 

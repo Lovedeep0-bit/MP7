@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,6 +38,9 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AudioPlayerScreen(
     title: String = "", 
@@ -181,14 +185,19 @@ fun AudioPlayerScreen(
         
         Spacer(Modifier.height(32.dp))
         
+
+
         // Song name only
         Text(
             text = currentTitle.ifBlank { "Now Playing" },
+            modifier = Modifier
+                .fillMaxWidth()
+                .basicMarquee(),
             color = colorScheme.onSurface,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            maxLines = 2
+            maxLines = 1
         )
         
         Spacer(Modifier.height(32.dp))

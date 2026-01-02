@@ -163,7 +163,7 @@ class VideoPlayerActivity : AppCompatActivity() {
             override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
                 if (videoSize.width > 0 && videoSize.height > 0) {
                     val isVertical = videoSize.height > videoSize.width
-                    android.util.Log.d("VideoPlayerActivity", "Video size changed: ${videoSize.width}x${videoSize.height}, isVertical=$isVertical")
+
                     
                     requestedOrientation = if (isVertical) {
                         android.content.pm.ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
@@ -191,7 +191,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                 val currentPosition = p.currentPosition
                 val newPosition = maxOf(0, currentPosition - 10000) // Skip back 10 seconds
                 p.seekTo(newPosition)
-                android.util.Log.d("VideoPlayerActivity", "Skipped backward to: ${newPosition}ms")
+
             }
         }
         
@@ -202,7 +202,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                 val duration = p.duration
                 val newPosition = minOf(duration, currentPosition + 10000) // Skip forward 10 seconds
                 p.seekTo(newPosition)
-                android.util.Log.d("VideoPlayerActivity", "Skipped forward to: ${newPosition}ms")
+
             }
         }
         
@@ -215,7 +215,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                     // Only seek if player is ready and position is valid
                     if (player != null && player.playbackState == Player.STATE_READY && seekPosition < player.duration) {
                         player.seekTo(seekPosition)
-                        android.util.Log.d("VideoPlayerActivity", "Seeking to: ${seekPosition}ms")
+
                     }
                 }
             }
@@ -297,7 +297,7 @@ class VideoPlayerActivity : AppCompatActivity() {
              lastPosition = intent.getLongExtra("last_position", 0L)
         }
         
-        android.util.Log.d("VideoPlayerActivity", "Received video data: title=$videoTitle, id=$videoId, lastPosition=${lastPosition}ms")
+
         
         if (videoUri != null && videoId != -1L) {
             videoFile = VideoFile(
@@ -337,14 +337,13 @@ class VideoPlayerActivity : AppCompatActivity() {
                             if (seekPosition > 0) {
                                 // Seek first, then start playing after seek completes
                                 player.seekTo(seekPosition)
-                                android.util.Log.d("VideoPlayerActivity", "Seeking to position: ${seekPosition}ms (duration: ${player.duration}ms)")
+
                                 
                                 // Wait for seek to complete, then start playing
                                 Handler(Looper.getMainLooper()).postDelayed({
                                     player.playWhenReady = true
                                     player.play()
                                     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                                    android.util.Log.d("VideoPlayerActivity", "Started playing from resumed position")
                                     player.removeListener(this)
                                 }, 100) // Small delay to ensure seek is processed
                             } else {
@@ -364,7 +363,6 @@ class VideoPlayerActivity : AppCompatActivity() {
                     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
                 if (videoRepository.getCompletionStatus(videoId)) {
-                    android.util.Log.d("VideoPlayerActivity", "Video is completed, starting from beginning")
                 }
             }
             
@@ -713,7 +711,6 @@ class VideoPlayerActivity : AppCompatActivity() {
                 val progress = (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
                 videoRepository.saveWatchProgress(video.id, progress, duration)
                 videoRepository.saveLastPlayPosition(video.id, currentPosition)
-                android.util.Log.d("VideoPlayerActivity", "Saved progress on pause: ${(progress * 100).toInt()}% at position ${currentPosition}ms")
                 
                 // Refresh folders with updated progress in background
                 CoroutineScope(Dispatchers.IO).launch {
@@ -740,7 +737,6 @@ class VideoPlayerActivity : AppCompatActivity() {
                 val progress = (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
                 videoRepository.saveWatchProgress(video.id, progress, duration)
                 videoRepository.saveLastPlayPosition(video.id, currentPosition)
-                android.util.Log.d("VideoPlayerActivity", "Saved final progress: ${(progress * 100).toInt()}% at position ${currentPosition}ms")
                 
                 // Refresh folders with updated progress in background
                 CoroutineScope(Dispatchers.IO).launch {
