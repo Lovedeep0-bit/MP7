@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 # MP7 - Modern Media Player 🚀
 
 A high-performance, minimalist MP3 and MP4 player for Android, built with Jetpack Compose and Media3 ExoPlayer.
