@@ -66,6 +66,7 @@ import com.lsj.mp7.ui.components.MiniPlayer
 import com.lsj.mp7.ui.components.ModernLoadingIndicator
 import com.lsj.mp7.data.AudioFolder
 import com.lsj.mp7.data.AlbumCoverStore
+import com.lsj.mp7.data.IconColorStore
 import com.lsj.mp7.data.AudioFile
 import com.lsj.mp7.viewmodel.AudioListViewModel
 import com.lsj.mp7.util.DurationFormatter
@@ -821,7 +822,8 @@ private fun AlbumCard(
                 } catch (_: Exception) {
                     // Ignore if permission can't be persisted
                 }
-                albumCoverStore.saveCustomCover(folder.name, it.toString())
+                // Copy file to internal storage
+                albumCoverStore.saveCustomCoverFromUri(folder.name, it)
             }
         }
     }
@@ -1307,6 +1309,12 @@ fun SettingsScreen(
                     ScannedDirectoriesSettingItem()
                 }
                 item {
+<<<<<<< Updated upstream
+=======
+                    AppIconSettingItem()
+                }
+                item {
+>>>>>>> Stashed changes
                     GithubRepoSettingItem()
                 }
                 
@@ -1317,7 +1325,11 @@ fun SettingsScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
+<<<<<<< Updated upstream
                             text = "Version 2.2",
+=======
+                            text = "Version 2.3",
+>>>>>>> Stashed changes
                             color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             fontSize = 12.sp
                         )
@@ -1721,3 +1733,89 @@ fun ImmersiveModeSettingItem() {
         )
     }
 }
+<<<<<<< Updated upstream
+=======
+@Composable
+fun AppIconSettingItem() {
+    val context = LocalContext.current
+    val currentIcon by IconColorStore.getIconFlow(context).collectAsState(initial = "Default")
+    val colorScheme = MaterialTheme.colorScheme
+    var showDropdown by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(colorScheme.surfaceVariant)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "App Icon",
+                    color = colorScheme.onSurface,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Choose your favorite icon color",
+                    color = colorScheme.onSurfaceVariant,
+                    fontSize = 14.sp
+                )
+            }
+
+            Box {
+                Row(
+                    modifier = Modifier
+                        .clickable { showDropdown = true }
+                        .padding(vertical = 4.dp, horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = currentIcon,
+                        color = colorScheme.onSurface,
+                        fontSize = 16.sp
+                    )
+                    Icon(
+                        imageVector = if (showDropdown) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                        contentDescription = "App icon dropdown",
+                        tint = colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showDropdown,
+                    onDismissRequest = { showDropdown = false },
+                    modifier = Modifier.background(colorScheme.surfaceVariant)
+                ) {
+                    val icons = listOf("Default", "Red", "Blue", "Green", "Lavender", "Pink", "Gradient")
+                    icons.forEach { iconName ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    iconName,
+                                    color = if (currentIcon == iconName) colorScheme.onSurface else colorScheme.onSurfaceVariant
+                                )
+                            },
+                            onClick = {
+                                scope.launch {
+                                    IconColorStore.setIcon(context, iconName)
+                                }
+                                showDropdown = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+>>>>>>> Stashed changes

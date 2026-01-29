@@ -13,8 +13,13 @@ android {
         applicationId = "com.lsj.mp7"
         minSdk = 24
         targetSdk = 34
+<<<<<<< Updated upstream
         versionCode = 5
         versionName = "2.2"
+=======
+        versionCode = 6
+        versionName = "2.3"
+>>>>>>> Stashed changes
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         

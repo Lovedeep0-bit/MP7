@@ -13,4 +13,12 @@
     <color name="colorOnSurface">#000000</color>
     <color name="colorError">#B00020</color>
     <color name="colorOnError">#FFFFFF</color>
+    
+    <!-- Icon Backgrounds -->
+    <color name="icon_background_red">#F44336</color>
+    <color name="icon_background_blue">#2196F3</color>
+    <color name="icon_background_green">#4CAF50</color>
+    <color name="icon_background_lavender">#BE93D4</color>
+    <color name="icon_background_pink">#E91E63</color>
+    <color name="icon_background_gradient">#121212</color>
 </resources>

@@ -6,9 +6,12 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.WindowManager
 import android.view.View
 import android.view.ViewGroup
+import android.media.AudioManager
+import android.widget.ProgressBar
 import android.widget.ArrayAdapter
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -62,6 +65,21 @@ class VideoPlayerActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private val progressUpdateRunnable = Runnable { updateProgress() }
     
+    // Gesture-related state
+    private lateinit var audioManager: AudioManager
+    
+    private var gestureStartY = 0f
+    private var gestureStartX = 0f
+    private var isGestureActive = false
+    private var gestureType = GestureType.NONE
+    private var gestureStartBrightness = 0.5f
+    private var gestureStartVolume = 0
+    private var currentBrightness = 0.5f
+    
+    private enum class GestureType {
+        NONE, BRIGHTNESS, VOLUME
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -101,6 +119,13 @@ class VideoPlayerActivity : AppCompatActivity() {
         currentTimeText = findViewById(R.id.currentTimeText)
         totalTimeText = findViewById(R.id.totalTimeText)
         titleText = findViewById(R.id.titleText)
+        
+        // Audio manager for volume control
+        audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+        
+        // Initialize brightness from current window setting
+        val layoutParams = window.attributes
+        currentBrightness = if (layoutParams.screenBrightness < 0) 0.5f else layoutParams.screenBrightness
         
         // Hide default controls
         playerView.useController = false
@@ -721,6 +746,86 @@ class VideoPlayerActivity : AppCompatActivity() {
         // Clear keep screen on when activity is paused
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
+    
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+        val touchZoneWidth = screenWidth / 3 // Left and right thirds for gestures
+        
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                gestureStartX = event.x
+                gestureStartY = event.y
+                isGestureActive = false
+                gestureType = GestureType.NONE
+                
+                // Store starting values
+                gestureStartBrightness = currentBrightness
+                gestureStartVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val cumulativeDeltaY = gestureStartY - event.y
+                val deltaX = kotlin.math.abs(event.x - gestureStartX)
+                
+                // Only activate gesture if vertical movement is significant and more than horizontal
+                if (kotlin.math.abs(cumulativeDeltaY) > 30 && kotlin.math.abs(cumulativeDeltaY) > deltaX) {
+                    if (!isGestureActive) {
+                        isGestureActive = true
+                        // Determine gesture type based on starting position
+                        val isLeftSide = gestureStartX < touchZoneWidth
+                        val isRightSide = gestureStartX > screenWidth - touchZoneWidth
+                        
+                        gestureType = when {
+                            isLeftSide -> GestureType.BRIGHTNESS
+                            isRightSide -> GestureType.VOLUME
+                            else -> GestureType.NONE
+                        }
+                    }
+                    
+                    // Use cumulative delta from start position
+                    when (gestureType) {
+                        GestureType.BRIGHTNESS -> adjustBrightness(cumulativeDeltaY, screenHeight)
+                        GestureType.VOLUME -> adjustVolume(cumulativeDeltaY, screenHeight)
+                        GestureType.NONE -> {}
+                    }
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (isGestureActive) {
+                    isGestureActive = false
+                    gestureType = GestureType.NONE
+                    return true
+                }
+            }
+        }
+        
+        return if (isGestureActive) true else super.dispatchTouchEvent(event)
+    }
+    
+    private fun adjustBrightness(cumulativeDelta: Float, screenHeight: Int) {
+        // Full screen swipe = 100% change
+        val percentChange = cumulativeDelta / screenHeight
+        
+        currentBrightness = (gestureStartBrightness + percentChange).coerceIn(0.01f, 1f)
+        
+        val layoutParams = window.attributes
+        layoutParams.screenBrightness = currentBrightness
+        window.attributes = layoutParams
+    }
+    
+    private fun adjustVolume(cumulativeDelta: Float, screenHeight: Int) {
+        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        
+        // Full screen swipe = 100% volume change
+        val percentChange = cumulativeDelta / screenHeight
+        val volumeChange = (percentChange * maxVolume).toInt()
+        
+        val newVolume = (gestureStartVolume + volumeChange).coerceIn(0, maxVolume)
+        
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
+    }
+    
+
     
     override fun onDestroy() {
         super.onDestroy()
