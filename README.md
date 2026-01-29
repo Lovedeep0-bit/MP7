@@ -1,12 +1,6 @@
-# MP7 - Modern Media Player (v2.3) 🚀
+# MP7 - Modern Media Player 🚀
 
 A high-performance, minimalist MP3 and MP4 player for Android, built with Jetpack Compose and Media3 ExoPlayer.
-
-## ✨ New in v2.3
-- **App Icon Customization**: Choose from 7 premium adaptive icon colors (Red, Blue, Green, Lavender, Pink, Gradient, and Default) that follow your device's shape.
-- **Enhanced Video Player**: Vertical swipe gestures for Volume (right side) and Brightness (left side) with hidden UI for a cinematic experience.
-- **Persistent Album Covers**: Custom folder covers are now saved to internal storage, persisting even if the original image is deleted.
-- **UI Refinements**: Relocated time labels in the video player and improved gesture sensitivity.
 
 ## ✨ Key Features
 - **Extreme Speed**: Single-pass media scanning (66% faster initial load).
